@@ -1,7 +1,7 @@
 import './styles/design-system.css';
 import './index.css';
 import { useState } from 'react';
-import { OnboardingFlow } from './components/Onboarding/OnboardingFlow';
+import { OnboardingFlow } from './components/profile/OnboardingFlow';
 import { DashboardShell } from './components/Dashboard/DashboardShell';
 
 function App() {

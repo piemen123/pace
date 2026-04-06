@@ -1,7 +1,13 @@
 import { useState } from 'react';
-import { UploadPipeline } from '../Syllabus/UploadPipeline';
-import { PacePilot } from './PacePilot';
-import { PomodoroTimer } from '../FocusGarden/PomodoroTimer';
+import { UploadPipeline } from '../calendar/UploadPipeline';
+import { PacePilot } from '../pilot/PacePilot';
+import { PomodoroTimer } from '../garden/PomodoroTimer';
+import { ThemeShell } from '../ui/theme/ThemeShell';
+import { GardenShell } from '../garden/GardenShell';
+import { ProfileShell } from '../profile/ProfileShell';
+import { PilotShell } from '../pilot/PilotShell';
+import { CalendarShell } from '../calendar/CalendarShell';
+import { CoreShell } from '../../lib/core/CoreShell';
 import {
   LayoutDashboard, Upload, Search, Bell,
   BookOpen, CalendarClock, BarChart3, Settings,
@@ -203,6 +209,16 @@ export const DashboardShell = ({ major = 'Environmental Engineering' }: Props) =
               <p style={{ fontSize: '0.85rem' }}>This feature is being built. Upload a syllabus to get started.</p>
             </div>
           )}
+
+          {/* ────────── DEVELOPER TERRITORY STUBS ────────── */}
+          <div className="dev-stubs" style={{ display: 'flex', gap: '1rem', padding: '1rem', flexWrap: 'wrap' }}>
+            <ThemeShell />
+            <GardenShell />
+            <ProfileShell />
+            <PilotShell />
+            <CalendarShell />
+            <CoreShell />
+          </div>
 
         </div>
       </div>
