@@ -2,12 +2,8 @@ import { useState } from 'react';
 import { UploadPipeline } from '../calendar/UploadPipeline';
 import { PacePilot } from '../pilot/PacePilot';
 import { PomodoroTimer } from '../garden/PomodoroTimer';
-import { ThemeShell } from '../ui/theme/ThemeShell';
-import { GardenShell } from '../garden/GardenShell';
-import { ProfileShell } from '../profile/ProfileShell';
-import { PilotShell } from '../pilot/PilotShell';
 import { CalendarShell } from '../calendar/CalendarShell';
-import { CoreShell } from '../../lib/core/CoreShell';
+
 import {
   LayoutDashboard, Upload, Search, Bell,
   BookOpen, CalendarClock, BarChart3, Settings,
@@ -109,7 +105,7 @@ export const DashboardShell = ({ major = 'Environmental Engineering' }: Props) =
         </header>
 
         {/* Body */}
-        <div className="dash-body">
+        <div className="dash-body" style={tab === 'schedule' ? { padding: '1rem' } : undefined}>
 
           {/* ────────── OVERVIEW ────────── */}
           {tab === 'overview' && (
@@ -202,23 +198,19 @@ export const DashboardShell = ({ major = 'Environmental Engineering' }: Props) =
           )}
 
           {/* ────────── PLACEHOLDER TABS ────────── */}
-          {(tab === 'schedule' || tab === 'analytics') && (
+          {tab === 'schedule' && (
+            <div className="anim-in" style={{ height: 'calc(100vh - 90px)', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <CalendarShell />
+            </div>
+          )}
+
+          {tab === 'analytics' && (
             <div className="anim-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '0.75rem', color: 'var(--text-3)' }}>
               <BarChart3 size={48} strokeWidth={1} />
               <p style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-2)' }}>Coming soon</p>
               <p style={{ fontSize: '0.85rem' }}>This feature is being built. Upload a syllabus to get started.</p>
             </div>
           )}
-
-          {/* ────────── DEVELOPER TERRITORY STUBS ────────── */}
-          <div className="dev-stubs" style={{ display: 'flex', gap: '1rem', padding: '1rem', flexWrap: 'wrap' }}>
-            <ThemeShell />
-            <GardenShell />
-            <ProfileShell />
-            <PilotShell />
-            <CalendarShell />
-            <CoreShell />
-          </div>
 
         </div>
       </div>
