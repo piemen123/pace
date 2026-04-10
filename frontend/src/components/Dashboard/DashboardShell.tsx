@@ -4,6 +4,7 @@ import { PacePilot } from '../pilot/PacePilot';
 import { PomodoroTimer } from '../garden/PomodoroTimer';
 import { PilotChat } from '../pilot/PilotChat';
 import { usePilotChat } from '../pilot/usePilotChat';
+import { CalendarShell } from '../calendar/CalendarShell';
 import {
   LayoutDashboard, Upload, Search, Bell,
   BookOpen, CalendarClock, BarChart3, Settings,
@@ -129,7 +130,7 @@ export const DashboardShell = ({ major = 'Environmental Engineering' }: Props) =
         </header>
 
         {/* Body */}
-        <div className={`dash-body${tab === 'pilot' ? ' dash-body--full' : ''}`}>
+        <div className={`dash-body${tab === 'pilot' ? ' dash-body--full' : ''}`} style={tab === 'schedule' ? { padding: '1rem' } : undefined}>
 
           {/* ── OVERVIEW ── */}
           {tab === 'overview' && (
@@ -216,8 +217,15 @@ export const DashboardShell = ({ major = 'Environmental Engineering' }: Props) =
             <PilotChat isStudyMode={studyMode} {...pilotChat} />
           </div>
 
-          {/* ── PLACEHOLDER TABS ── */}
-          {(tab === 'schedule' || tab === 'analytics') && (
+          {/* ── SCHEDULE (Calendar) ── */}
+          {tab === 'schedule' && (
+            <div className="anim-in" style={{ height: 'calc(100vh - 90px)', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <CalendarShell />
+            </div>
+          )}
+
+          {/* ── ANALYTICS ── */}
+          {tab === 'analytics' && (
             <div className="anim-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '0.75rem', color: 'var(--text-3)' }}>
               <BarChart3 size={48} strokeWidth={1} />
               <p style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-2)' }}>Coming soon</p>
