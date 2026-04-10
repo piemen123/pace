@@ -1,17 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { UploadPipeline } from '../calendar/UploadPipeline';
 import { PacePilot } from '../pilot/PacePilot';
 import { PomodoroTimer } from '../garden/PomodoroTimer';
-import { ThemeShell } from '../ui/theme/ThemeShell';
-import { GardenShell } from '../garden/GardenShell';
-import { ProfileShell } from '../profile/ProfileShell';
-import { PilotShell } from '../pilot/PilotShell';
-import { CalendarShell } from '../calendar/CalendarShell';
-import { CoreShell } from '../../lib/core/CoreShell';
+import { PilotChat } from '../pilot/PilotChat';
+import { usePilotChat } from '../pilot/usePilotChat';
 import {
   LayoutDashboard, Upload, Search, Bell,
   BookOpen, CalendarClock, BarChart3, Settings,
-  Zap,
+  Zap, Sparkles, MessageSquare, Moon, Sun,
 } from 'lucide-react';
 
 const NAV = [
@@ -19,15 +15,16 @@ const NAV = [
   { id: 'syllabus',  label: 'Syllabus Upload',  icon: Upload },
   { id: 'schedule',  label: 'Schedule',         icon: CalendarClock },
   { id: 'analytics', label: 'Analytics',        icon: BarChart3 },
+  { id: 'pilot',     label: 'Pace Pilot',       icon: Sparkles },
 ];
 
 // Mock upcoming deadlines
 const DEADLINES = [
-  { course: 'ENV 3210',    type: 'Midterm Exam',   date: 'Apr 10',  color: '#ef4444' },
-  { course: 'MATH 2401',  type: 'Problem Set 7',  date: 'Apr 12',  color: '#f97316' },
-  { course: 'ENV 3210',   type: 'Lab Report',     date: 'Apr 15',  color: '#8b5cf6' },
-  { course: 'CS 3600',    type: 'Project Draft',  date: 'Apr 18',  color: '#3b82f6' },
-  { course: 'MATH 2401',  type: 'Final Exam',     date: 'May 15',  color: '#ef4444' },
+  { course: 'ENV 3210',   type: 'Midterm Exam',   date: 'Apr 10', color: '#ef4444' },
+  { course: 'MATH 2401',  type: 'Problem Set 7',  date: 'Apr 12', color: '#f97316' },
+  { course: 'ENV 3210',   type: 'Lab Report',     date: 'Apr 15', color: '#8b5cf6' },
+  { course: 'CS 3600',    type: 'Project Draft',  date: 'Apr 18', color: '#3b82f6' },
+  { course: 'MATH 2401',  type: 'Final Exam',     date: 'May 15', color: '#ef4444' },
 ];
 
 interface Props { major?: string; }
@@ -35,13 +32,24 @@ interface Props { major?: string; }
 export const DashboardShell = ({ major = 'Environmental Engineering' }: Props) => {
   const [tab, setTab]             = useState('overview');
   const [studyMode, setStudyMode] = useState(false);
+  const [pilotOpen, setPilotOpen] = useState(true);
+  const [darkMode, setDarkMode]   = useState(() => {
+    const saved = localStorage.getItem('pace-dark');
+    return saved ? saved === 'true' : false;
+  });
+  const pilotChat = usePilotChat();
 
-  const firstName = 'Atharva'; // could come from profile in future
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+    localStorage.setItem('pace-dark', String(darkMode));
+  }, [darkMode]);
+
+  const firstName = 'Atharva';
 
   return (
     <div className="dash-shell">
 
-      {/* ── Sidebar ── */}
+      {/* ── Left sidebar ── */}
       <nav className="dash-sidebar">
         <div className="dash-logo">
           <div className="dash-logo-icon">P</div>
@@ -71,7 +79,6 @@ export const DashboardShell = ({ major = 'Environmental Engineering' }: Props) =
 
         <div className="sidebar-spacer" />
 
-        {/* Usage card */}
         <div className="sidebar-footer">
           <span className="sidebar-footer-label">{major.split(' ')[0]}</span>
           <span className="sidebar-footer-sub">15 credits this semester</span>
@@ -93,7 +100,6 @@ export const DashboardShell = ({ major = 'Environmental Engineering' }: Props) =
           </div>
 
           <div className="topbar-right">
-            {/* Study mode pill */}
             <div
               className={`study-mode-pill ${studyMode ? 'on' : ''}`}
               onClick={() => setStudyMode(m => !m)}
@@ -104,23 +110,33 @@ export const DashboardShell = ({ major = 'Environmental Engineering' }: Props) =
               <div className="study-mode-switch" />
             </div>
 
+            <button className="topbar-icon-btn" onClick={() => setDarkMode(d => !d)} title={darkMode ? 'Light mode' : 'Dark mode'}>
+              {darkMode ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
             <button className="topbar-icon-btn"><Bell size={15} /></button>
+
+            {/* Pilot panel toggle — only visible when not on the full pilot tab */}
+            {tab !== 'pilot' && (
+              <button
+                className={`topbar-icon-btn${pilotOpen ? ' active' : ''}`}
+                onClick={() => setPilotOpen(o => !o)}
+                title={pilotOpen ? 'Hide Pilot' : 'Show Pilot'}
+              >
+                <MessageSquare size={15} />
+              </button>
+            )}
           </div>
         </header>
 
         {/* Body */}
-        <div className="dash-body">
+        <div className={`dash-body${tab === 'pilot' ? ' dash-body--full' : ''}`}>
 
-          {/* ────────── OVERVIEW ────────── */}
+          {/* ── OVERVIEW ── */}
           {tab === 'overview' && (
             <div className="anim-in">
-              {/* Greeting */}
               <h1 className="dash-greeting-title">Hello, {firstName} 👋</h1>
-              <p className="dash-greeting-sub">
-                Here's your academic snapshot for today.
-              </p>
+              <p className="dash-greeting-sub">Here's your academic snapshot for today.</p>
 
-              {/* Study mode banner */}
               {studyMode && (
                 <div className="study-banner">
                   <div className="study-banner-dot" />
@@ -130,7 +146,6 @@ export const DashboardShell = ({ major = 'Environmental Engineering' }: Props) =
                 </div>
               )}
 
-              {/* Stat cards */}
               <div className="stat-grid">
                 <div className="stat-card">
                   <div className="stat-card-tint" style={{ background: 'var(--tint-blue)' }} />
@@ -152,10 +167,7 @@ export const DashboardShell = ({ major = 'Environmental Engineering' }: Props) =
                 </div>
               </div>
 
-              {/* Content row: timer + deadlines */}
               <div className="dash-content-row">
-
-                {/* Focus Garden */}
                 <div className="card">
                   <div className="card-header">
                     <div>
@@ -167,7 +179,6 @@ export const DashboardShell = ({ major = 'Environmental Engineering' }: Props) =
                   <PomodoroTimer major={major} isStudyMode={studyMode} />
                 </div>
 
-                {/* Upcoming deadlines */}
                 <div className="card" style={{ overflow: 'hidden' }}>
                   <div className="card-header">
                     <div>
@@ -189,19 +200,23 @@ export const DashboardShell = ({ major = 'Environmental Engineering' }: Props) =
                     ))}
                   </div>
                 </div>
-
               </div>
             </div>
           )}
 
-          {/* ────────── SYLLABUS ────────── */}
+          {/* ── SYLLABUS ── */}
           {tab === 'syllabus' && (
             <div className="anim-in">
               <UploadPipeline />
             </div>
           )}
 
-          {/* ────────── PLACEHOLDER TABS ────────── */}
+          {/* ── PACE PILOT TAB — always mounted to preserve chat history ── */}
+          <div style={{ display: tab === 'pilot' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
+            <PilotChat isStudyMode={studyMode} {...pilotChat} />
+          </div>
+
+          {/* ── PLACEHOLDER TABS ── */}
           {(tab === 'schedule' || tab === 'analytics') && (
             <div className="anim-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '0.75rem', color: 'var(--text-3)' }}>
               <BarChart3 size={48} strokeWidth={1} />
@@ -210,21 +225,18 @@ export const DashboardShell = ({ major = 'Environmental Engineering' }: Props) =
             </div>
           )}
 
-          {/* ────────── DEVELOPER TERRITORY STUBS ────────── */}
-          <div className="dev-stubs" style={{ display: 'flex', gap: '1rem', padding: '1rem', flexWrap: 'wrap' }}>
-            <ThemeShell />
-            <GardenShell />
-            <ProfileShell />
-            <PilotShell />
-            <CalendarShell />
-            <CoreShell />
-          </div>
-
         </div>
       </div>
 
-      {/* ── Pace Pilot panel ── */}
-      <PacePilot isStudyMode={studyMode} />
+      {/* ── Right pilot panel — hidden on pilot tab ── */}
+      {tab !== 'pilot' && (
+        <PacePilot
+          open={pilotOpen}
+          isStudyMode={studyMode}
+          onClose={() => setPilotOpen(false)}
+          {...pilotChat}
+        />
+      )}
     </div>
   );
 };

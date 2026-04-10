@@ -1,76 +1,170 @@
-import { useState } from 'react';
-import { Send, Bot, Zap } from 'lucide-react';
-import { sendChatMessage } from '../../services/api';
+import { useRef, useEffect } from 'react';
+import { Send, Sparkles, Zap, Clock, Brain, BookOpen, X, RotateCcw } from 'lucide-react';
+import Markdown from 'react-markdown';
+import type { Msg } from './usePilotChat';
 
-interface Msg { role: 'user' | 'bot'; text: string; }
+const QUICK_PROMPTS = [
+  { icon: <Brain size={13} />,    label: 'I have an upcoming exam' },
+  { icon: <Clock size={13} />,    label: 'Help me plan my week'    },
+  { icon: <BookOpen size={13} />, label: 'Give me study tips'      },
+];
 
-export const PacePilot = ({ isStudyMode }: { isStudyMode: boolean }) => {
-  const [messages, setMessages] = useState<Msg[]>([
-    { role: 'bot', text: "Hi! I'm Pace Pilot. Tell me about an upcoming exam or ask for study advice." },
-  ]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
+interface Props {
+  open: boolean;
+  isStudyMode: boolean;
+  messages: Msg[];
+  input: string;
+  setInput: (v: string) => void;
+  loading: boolean;
+  send: (override?: string) => void;
+  retry: (userText: string) => void;
+  onClose: () => void;
+}
 
-  const send = async () => {
-    if (!input.trim()) return;
-    const text = input.trim();
-    const next: Msg[] = [...messages, { role: 'user', text }];
-    setMessages(next);
-    setInput('');
-    setLoading(true);
-    try {
-      const res = await sendChatMessage(text, next.map(m => ({ role: m.role, content: m.text })));
-      setMessages([...next, { role: 'bot', text: res.reply }]);
-    } catch {
-      setMessages([...next, { role: 'bot', text: 'Servers are resting. Try again soon.' }]);
-    } finally {
-      setLoading(false);
+export const PacePilot = ({ open, isStudyMode, messages, input, setInput, loading, send, retry, onClose }: Props) => {
+  const bottomRef   = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
+
+  // Reset textarea height after a message is sent
+  useEffect(() => {
+    if (!input && textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
+  }, [input]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    const el = e.target;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      send();
     }
   };
 
+  const hasUserMsg = messages.some(m => m.role === 'user');
+
   return (
+    <div className={`pilot-panel-wrap${open ? '' : ' pilot-panel-wrap--closed'}`}>
     <aside className="pilot-panel">
-      {/* Header */}
+
+      {/* ── Header ── */}
       <div className="pilot-header">
-        <div className="pilot-avatar">
-          <Bot size={17} />
+        <div className="pilot-avatar-lg">
+          <Sparkles size={16} />
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div className="pilot-title">Pace Pilot</div>
           <div className="pilot-status">
-            <div className="pilot-status-dot" style={{ background: isStudyMode ? '#16a34a' : '#9ca3af' }} />
-            {isStudyMode ? 'Monitoring Session' : 'Standby'}
+            <div className={`pilot-status-dot${isStudyMode ? ' active' : ''}`} />
+            {isStudyMode ? 'Monitoring session' : 'Ready to help'}
           </div>
         </div>
-        {isStudyMode && <Zap size={15} color="#16a34a" />}
+        {isStudyMode && (
+          <div className="pilot-mode-badge">
+            <Zap size={11} /> Live
+          </div>
+        )}
+        <button className="pilot-close-btn" onClick={onClose} title="Hide Pilot">
+          <X size={14} />
+        </button>
       </div>
 
-      {/* Messages */}
+      {/* ── Study mode strip ── */}
+      {isStudyMode && (
+        <div className="pilot-study-strip">
+          <div className="pilot-study-strip-dot" />
+          <span>Study Mode active — recommendations tailored to your session</span>
+        </div>
+      )}
+
+      {/* ── Messages ── */}
       <div className="pilot-messages">
         {messages.map((m, i) => (
-          <div key={i} className={`pilot-msg ${m.role}`}>{m.text}</div>
+          <div key={i} className={`pilot-msg-row ${m.role}`}>
+            {m.role === 'bot' && (
+              <div className="pilot-msg-avatar">
+                <Sparkles size={10} />
+              </div>
+            )}
+            <div className="pilot-msg-col">
+              <div className={`pilot-msg ${m.role}`}>
+                {m.role === 'bot'
+                  ? <Markdown>{m.text}</Markdown>
+                  : m.text}
+              </div>
+              {m.failed && m.retryText && (
+                <button className="pilot-retry-btn" onClick={() => retry(m.retryText!)}>
+                  <RotateCcw size={11} /> Retry
+                </button>
+              )}
+              <span className="pilot-msg-ts">{m.ts}</span>
+            </div>
+          </div>
         ))}
-        {loading && <div className="pilot-typing">Pilot is thinking…</div>}
+
+        {loading && (
+          <div className="pilot-msg-row bot">
+            <div className="pilot-msg-avatar">
+              <Sparkles size={10} />
+            </div>
+            <div className="pilot-typing-dots">
+              <span /><span /><span />
+            </div>
+          </div>
+        )}
+
+        <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
+      {/* ── Quick prompts ── */}
+      {!hasUserMsg && (
+        <div className="pilot-chips">
+          {QUICK_PROMPTS.map(p => (
+            <button
+              key={p.label}
+              className="pilot-chip"
+              onClick={() => send(p.label)}
+              disabled={loading}
+            >
+              {p.icon}
+              {p.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Input ── */}
       <div className="pilot-input-wrap">
         <div className="pilot-input-row">
-          <input
+          <textarea
+            ref={textareaRef}
             value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && send()}
-            placeholder="Tell me about a new test…"
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            placeholder={isStudyMode ? 'Ask about your session…' : 'Ask anything…'}
+            rows={1}
           />
           <button
             className="pilot-send-btn"
-            onClick={send}
+            onClick={() => send()}
             disabled={loading || !input.trim()}
           >
             <Send size={13} />
           </button>
         </div>
+        <p className="pilot-input-hint">Enter to send · Shift+Enter for new line</p>
       </div>
+
     </aside>
+    </div>
   );
 };
