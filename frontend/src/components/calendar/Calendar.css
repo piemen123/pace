@@ -105,7 +105,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-bottom: 1px solid rgba(204, 0, 0, 0.2);
+  border-bottom: 1px solid var(--accent-muted);
 }
 
 /* ── MONTH VIEW ── */
@@ -142,11 +142,11 @@
 }
 
 .month-cell:hover {
-  background: var(--surface-2);
+  background: var(--accent-light);
 }
 
 .month-cell.not-current-month {
-  background: #fafafa;
+  background: var(--surface-2);
   color: var(--text-3);
 }
 
@@ -183,7 +183,7 @@
 
 .deadline-pill {
   padding: 0.15rem 0.35rem;
-  background: #fef2f2;
+  background: var(--red-light);
   border-left: 3px solid var(--ncsu-red);
   border-radius: 3px;
   font-size: 0.65rem;
@@ -212,13 +212,13 @@
 
 .deadline-pill.hw {
   border-left-color: var(--amber);
-  background: #fffbeb;
+  background: var(--amber-light);
   color: var(--amber);
 }
 
 .deadline-pill.proj {
   border-left-color: var(--accent);
-  background: #eff6ff;
+  background: var(--accent-light);
   color: var(--accent);
 }
 
@@ -314,7 +314,7 @@
 }
 
 .day-col.today {
-  background: rgba(204, 0, 0, 0.02);
+  background: var(--accent-light);
 }
 
 .grid-slot {
@@ -475,13 +475,13 @@
 }
 
 .btn-danger {
-  background: #fee2e2;
-  color: #dc2626;
-  border: 1px solid #fca5a5;
+  background: var(--red-light);
+  color: var(--red);
+  border: 1px solid var(--red);
 }
 
 .btn-danger:hover {
-  background: #fecaca;
+  opacity: 0.85;
 }
 
 /* ── COLOR SWATCHES ── */
