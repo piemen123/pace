@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { createProfile } from '../../services/api';
 import {
   BookOpen, Clock, Briefcase, Calendar,
@@ -44,6 +44,9 @@ const STEP_SUBTITLES = [
 export const OnboardingFlow = ({ onComplete }: { onComplete: (major: string) => void }) => {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [editingCredits, setEditingCredits] = useState(false);
+  const [creditsInput, setCreditsInput] = useState('');
+  const creditsInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<FormData>({
     major: '',
     workload_credits: 15,
@@ -60,6 +63,7 @@ export const OnboardingFlow = ({ onComplete }: { onComplete: (major: string) => 
     setLoading(true);
     try {
       await createProfile({ id: generateId(), ...formData });
+      localStorage.setItem('pace_profile', JSON.stringify(formData));
       onComplete(formData.major);
     } catch (error) {
       console.error(error);
@@ -106,6 +110,7 @@ export const OnboardingFlow = ({ onComplete }: { onComplete: (major: string) => 
               placeholder="e.g. Environmental Engineering"
               value={formData.major}
               onChange={e => setFormData({ ...formData, major: e.target.value })}
+              onKeyDown={e => { if (e.key === 'Enter' && canAdvance) handleNext(); }}
               autoFocus
             />
           </>
@@ -116,13 +121,51 @@ export const OnboardingFlow = ({ onComplete }: { onComplete: (major: string) => 
           <>
             <label className="ob-label">Credit Hours</label>
             <div className="ob-credit-display">
-              <span className="ob-credit-num">{formData.workload_credits}</span>
+              {editingCredits ? (
+                <input
+                  ref={creditsInputRef}
+                  type="number"
+                  className="ob-credit-num-input"
+                  value={creditsInput}
+                  min={1} max={30}
+                  onChange={e => setCreditsInput(e.target.value)}
+                  onBlur={() => {
+                    const val = Math.min(30, Math.max(1, parseInt(creditsInput) || formData.workload_credits));
+                    setFormData({ ...formData, workload_credits: val });
+                    setEditingCredits(false);
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const val = Math.min(30, Math.max(1, parseInt(creditsInput) || formData.workload_credits));
+                      setFormData({ ...formData, workload_credits: val });
+                      setEditingCredits(false);
+                      handleNext();
+                    } else if (e.key === 'Escape') {
+                      setEditingCredits(false);
+                    }
+                  }}
+                />
+              ) : (
+                <span
+                  className="ob-credit-num"
+                  title="Click to type a value"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => {
+                    setCreditsInput(String(formData.workload_credits));
+                    setEditingCredits(true);
+                    setTimeout(() => creditsInputRef.current?.select(), 0);
+                  }}
+                >
+                  {formData.workload_credits}
+                </span>
+              )}
               <input
                 type="range"
                 className="ob-range"
                 min={1} max={30}
                 value={formData.workload_credits}
                 onChange={e => setFormData({ ...formData, workload_credits: parseInt(e.target.value) })}
+                onKeyDown={e => { if (e.key === 'Enter') handleNext(); }}
               />
             </div>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-3)', marginTop: '0.75rem' }}>

@@ -4,11 +4,16 @@ import { useState } from 'react';
 import { OnboardingFlow } from './components/profile/OnboardingFlow';
 import { DashboardShell } from './components/Dashboard/DashboardShell';
 
-function App() {
-  const [ready, setReady] = useState(false);
-  const [major, setMajor]   = useState('Environmental Engineering');
+const STORAGE_KEY = 'pace_profile';
 
-  // We store the major so the dashboard personalises the Focus Garden
+function App() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  const [ready, setReady] = useState(!!saved);
+  const [major, setMajor] = useState(() => {
+    try { return saved ? JSON.parse(saved).major : 'Environmental Engineering'; }
+    catch { return 'Environmental Engineering'; }
+  });
+
   const handleComplete = (m?: string) => {
     if (m) setMajor(m);
     setReady(true);
