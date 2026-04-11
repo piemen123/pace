@@ -1,6 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React from 'react';
 import { ChevronLeft, ChevronRight, Trash2, Plus } from 'lucide-react';
 import { type TimeBlock, type Deadline } from './mockData';
+import { formatDate, getBlockStyle, blockMatchesDate } from './utils';
+import { useBlockInteractions } from './useBlockInteractions';
 
 interface WeekViewProps {
   currentDate: Date;
@@ -27,16 +29,11 @@ export const WeekView: React.FC<WeekViewProps> = ({
   onOpenDeadlineModal,
   onOpenBlockModal
 }) => {
-  const [, setDraggedBlock] = useState<string | null>(null);
-
-  // Resize State
-  const resizeStateInfo = useRef<{ id: string; isTop: boolean; startY: number; originalEndM: number; originalStartM: number } | null>(null);
+  const { handleDragStart, handleDragEnd, handleDrop, handleResizeStart } = useBlockInteractions(timeBlocks, onUpdateBlock);
 
   const getStartOfWeek = (date: Date) => {
     const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day;
-    return new Date(d.setDate(diff));
+    return new Date(d.setDate(d.getDate() - d.getDay()));
   };
 
   const startOfWeek = getStartOfWeek(currentDate);
@@ -61,128 +58,6 @@ export const WeekView: React.FC<WeekViewProps> = ({
 
   const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const title = `${monthNames[startOfWeek.getMonth()]} ${startOfWeek.getDate()} - ${monthNames[weekDays[6].getMonth()]} ${weekDays[6].getDate()}, ${startOfWeek.getFullYear()}`;
-
-  const getBlockStyle = (startTime: string, endTime: string, color: string) => {
-    const [sH, sM] = startTime.split(':').map(Number);
-    const [eH, eM] = endTime.split(':').map(Number);
-
-    const top = (sH * 48) + (sM * 0.8);
-    const height = ((eH * 48) + (eM * 0.8)) - top;
-
-    return {
-      top: `${top}px`,
-      height: `${height}px`,
-      backgroundColor: color
-    };
-  };
-
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    e.dataTransfer.setData('text/plain', id);
-    setDraggedBlock(id);
-    setTimeout(() => {
-      const el = e.target as HTMLElement;
-      el.classList.add('dragging');
-    }, 0);
-  };
-
-  const handleDragEnd = (e: React.DragEvent) => {
-    setDraggedBlock(null);
-    const el = e.target as HTMLElement;
-    el.classList.remove('dragging');
-  };
-
-  const handleDrop = (e: React.DragEvent, dateString: string, hour: number) => {
-    e.preventDefault();
-    const id = e.dataTransfer.getData('text/plain');
-    if (!id) return;
-
-    const block = timeBlocks.find(tb => tb.id === id);
-    if (!block) return;
-
-    // Calculate duration in minutes
-    const [sH, sM] = block.startTime.split(':').map(Number);
-    const [eH, eM] = block.endTime.split(':').map(Number);
-    const durationMinutes = ((eH * 60) + eM) - ((sH * 60) + sM);
-
-    const newStartH = hour;
-    const newStartM = 0;
-    const newEndTotalM = (newStartH * 60) + newStartM + durationMinutes;
-
-    const finalEndH = Math.min(23, Math.floor(newEndTotalM / 60));
-    const finalEndM = Math.min(59, newEndTotalM % 60);
-
-    const newStartTime = `${String(newStartH).padStart(2, '0')}:${String(newStartM).padStart(2, '0')}`;
-    const newEndTime = `${String(finalEndH).padStart(2, '0')}:${String(finalEndM).padStart(2, '0')}`;
-
-    onUpdateBlock(id, {
-      date: dateString,
-      startTime: newStartTime,
-      endTime: newEndTime
-    });
-
-    const elements = document.querySelectorAll('.drag-over');
-    elements.forEach(el => el.classList.remove('drag-over'));
-  };
-
-  // Resize Handlers
-  const handleResizeStart = (e: React.MouseEvent, id: string, isTop: boolean) => {
-    e.stopPropagation();
-    e.preventDefault();
-
-    const block = timeBlocks.find(tb => tb.id === id);
-    if (!block) return;
-
-    const [sH, sM] = block.startTime.split(':').map(Number);
-    const [eH, eM] = block.endTime.split(':').map(Number);
-
-    resizeStateInfo.current = {
-      id,
-      isTop,
-      startY: e.clientY,
-      originalStartM: (sH * 60) + sM,
-      originalEndM: (eH * 60) + eM
-    };
-
-    window.addEventListener('mousemove', handleResizeMove);
-    window.addEventListener('mouseup', handleResizeEnd);
-    document.body.style.cursor = 'ns-resize';
-  };
-
-  const handleResizeMove = (e: MouseEvent) => {
-    if (!resizeStateInfo.current) return;
-    const { id, isTop, startY, originalEndM, originalStartM } = resizeStateInfo.current;
-
-    const deltaY = e.clientY - startY;
-    const deltaM = deltaY * 1.25; // 60 mins / 48 px = 1.25 mins per px
-    const snappedDeltaM = Math.round(deltaM / 15) * 15; // wrap to 15m intervals
-
-    if (isTop) {
-      let newStartM = originalStartM + snappedDeltaM;
-      if (newStartM > originalEndM - 15) newStartM = originalEndM - 15; // Min 15m length
-      if (newStartM < 0) newStartM = 0;
-
-      const newStartH = Math.floor(newStartM / 60);
-      const newStartMStr = newStartM % 60;
-      const formattedStartTime = `${String(newStartH).padStart(2, '0')}:${String(newStartMStr).padStart(2, '0')}`;
-      onUpdateBlock(id, { startTime: formattedStartTime });
-    } else {
-      let newEndM = originalEndM + snappedDeltaM;
-      if (newEndM < originalStartM + 15) newEndM = originalStartM + 15; // Min 15m length
-      if (newEndM > 24 * 60) newEndM = 24 * 60 - 1; // Limit to 23:59
-
-      const finalEndH = Math.floor(newEndM / 60);
-      const finalEndM = newEndM % 60;
-      const formattedEndTime = `${String(finalEndH).padStart(2, '0')}:${String(finalEndM).padStart(2, '0')}`;
-      onUpdateBlock(id, { endTime: formattedEndTime });
-    }
-  };
-
-  const handleResizeEnd = () => {
-    window.removeEventListener('mousemove', handleResizeMove);
-    window.removeEventListener('mouseup', handleResizeEnd);
-    document.body.style.cursor = '';
-    resizeStateInfo.current = null;
-  };
 
   const today = new Date();
 
@@ -209,17 +84,14 @@ export const WeekView: React.FC<WeekViewProps> = ({
         {weekDays.map((d, i) => {
           const isToday = d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
           const dayStr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
-          const dateString = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          const dateString = formatDate(d);
           const dayDeadlines = deadlines.filter(dl => dl.date === dateString);
 
           return (
             <div
               key={i}
               className="week-header-cell"
-              onClick={() => {
-                onDateChange(d);
-                onViewChange('day');
-              }}
+              onClick={() => { onDateChange(d); onViewChange('day'); }}
             >
               <div className="week-header-day">{dayStr}</div>
               <div className={`week-header-date ${isToday ? 'today' : ''}`}>{d.getDate()}</div>
@@ -233,9 +105,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
                       onClick={(e) => { e.stopPropagation(); onOpenDeadlineModal(dl); }}
                     />
                     <div className={`deadline-popout downward ${i >= 4 ? 'right-aligned' : ''}`}>
-                      <div className="popout-header">
-                        ⏳ {dl.type} Deadline
-                      </div>
+                      <div className="popout-header">⏳ {dl.type} Deadline</div>
                       <div className="popout-body">
                         <strong>{dl.title}</strong><br />
                         Scheduled for {dl.date}
@@ -265,8 +135,8 @@ export const WeekView: React.FC<WeekViewProps> = ({
 
         {weekDays.map((d, i) => {
           const isToday = d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
-          const dateString = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-          const dayBlocks = timeBlocks.filter(tb => tb.date === dateString);
+          const dateString = formatDate(d);
+          const dayBlocks = timeBlocks.filter(tb => blockMatchesDate(tb, dateString));
 
           return (
             <div
@@ -290,10 +160,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
                   key={tb.id}
                   className="absolute-block"
                   style={getBlockStyle(tb.startTime, tb.endTime, tb.color)}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenBlockModal(tb);
-                  }}
+                  onClick={(e) => { e.stopPropagation(); onOpenBlockModal(tb); }}
                   draggable="true"
                   onDragStart={(e) => handleDragStart(e, tb.id)}
                   onDragEnd={handleDragEnd}
@@ -301,7 +168,6 @@ export const WeekView: React.FC<WeekViewProps> = ({
                 >
                   <span className="truncate">{tb.title}</span>
 
-                  {/* Delete Button (hover) */}
                   <button
                     className="delete-btn"
                     onClick={(e) => { e.stopPropagation(); onDeleteBlock(tb.id); }}
@@ -310,17 +176,8 @@ export const WeekView: React.FC<WeekViewProps> = ({
                     <Trash2 size={12} />
                   </button>
 
-                  {/* Resize Handles for Week View */}
-                  <div
-                    className="resize-handle top"
-                    onMouseDown={(e) => handleResizeStart(e, tb.id, true)}
-                    onClick={e => e.stopPropagation()}
-                  />
-                  <div
-                    className="resize-handle bottom"
-                    onMouseDown={(e) => handleResizeStart(e, tb.id, false)}
-                    onClick={e => e.stopPropagation()}
-                  />
+                  <div className="resize-handle top" onMouseDown={(e) => handleResizeStart(e, tb.id, true)} onClick={e => e.stopPropagation()} />
+                  <div className="resize-handle bottom" onMouseDown={(e) => handleResizeStart(e, tb.id, false)} onClick={e => e.stopPropagation()} />
                 </div>
               ))}
             </div>

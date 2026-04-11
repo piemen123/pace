@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus } from 'lucide-react';
 import { type Deadline, type TimeBlock } from './mockData';
+import { formatDate } from './utils';
 
 interface MonthViewProps {
   currentDate: Date;
@@ -75,7 +76,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
       month === today.getMonth() && 
       year === today.getFullYear();
       
-    const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dateString = formatDate(new Date(year, month, d));
     const dayDeadlines = deadlines.filter(dl => dl.date === dateString);
 
     days.push(

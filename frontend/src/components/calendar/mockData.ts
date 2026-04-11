@@ -6,10 +6,14 @@ export interface TimeBlock {
   title: string;
   type: BlockType;
   color: string;
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD (start date)
   startTime: string; // HH:MM (24h)
   endTime: string; // HH:MM (24h)
   description?: string;
+  recurrence?: {
+    type: 'weekly';
+    endsAfter?: number; // number of total occurrences (undefined = indefinite)
+  };
 }
 
 export interface Deadline {

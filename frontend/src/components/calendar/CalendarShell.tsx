@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
 import './Calendar.css';
 import { initialTimeBlocks, initialDeadlines, type TimeBlock, type Deadline, type BlockType, PRESET_COLORS } from './mockData';
+import { formatDate } from './utils';
 import { MonthView } from './MonthView';
 import { WeekView } from './WeekView';
 import { DayView } from './DayView';
@@ -10,13 +11,36 @@ export const CalendarShell = () => {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [currentView, setCurrentView] = useState<'month' | 'week' | 'day'>('month');
 
-  const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>(initialTimeBlocks);
-  const [deadlines, setDeadlines] = useState<Deadline[]>(initialDeadlines);
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>(() => {
+    try {
+      const saved = localStorage.getItem('pace_timeBlocks');
+      return saved ? JSON.parse(saved) : initialTimeBlocks;
+    } catch {
+      return initialTimeBlocks;
+    }
+  });
+
+  const [deadlines, setDeadlines] = useState<Deadline[]>(() => {
+    try {
+      const saved = localStorage.getItem('pace_deadlines');
+      return saved ? JSON.parse(saved) : initialDeadlines;
+    } catch {
+      return initialDeadlines;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('pace_timeBlocks', JSON.stringify(timeBlocks));
+  }, [timeBlocks]);
+
+  useEffect(() => {
+    localStorage.setItem('pace_deadlines', JSON.stringify(deadlines));
+  }, [deadlines]);
 
   const [isDeadlineModalOpen, setIsDeadlineModalOpen] = useState(false);
   const [editingDeadline, setEditingDeadline] = useState<Deadline | undefined>(undefined);
   const [deadlineTitle, setDeadlineTitle] = useState('');
-  const [deadlineType, setDeadlineType] = useState<string>('Test');
+  const [deadlineType, setDeadlineType] = useState<BlockType>('Test');
   const [deadlineColor, setDeadlineColor] = useState(PRESET_COLORS.Test);
   const [deadlineDate, setDeadlineDate] = useState('');
   const [deadlineDescription, setDeadlineDescription] = useState('');
@@ -29,7 +53,7 @@ export const CalendarShell = () => {
   const [blockDate, setBlockDate] = useState('');
   const [blockStartTime, setBlockStartTime] = useState('09:00');
   const [blockEndTime, setBlockEndTime] = useState('10:00');
-  const [blockRepeatWeeks, setBlockRepeatWeeks] = useState(0);
+  const [blockRecurrence, setBlockRecurrence] = useState<'none' | 'monthly' | 'semester' | 'indefinite'>('none');
   const [blockDescription, setBlockDescription] = useState('');
 
   const handleOpenBlockModal = (block?: TimeBlock, defaultDate?: Date, defaultHour?: number) => {
@@ -42,16 +66,14 @@ export const CalendarShell = () => {
       setBlockStartTime(block.startTime);
       setBlockEndTime(block.endTime);
       setBlockDescription(block.description || '');
-      setBlockRepeatWeeks(0);
+      setBlockRecurrence('none');
     } else {
       setEditingBlockId(null);
       setBlockTitle('');
       setBlockType('Class');
       setBlockColor(PRESET_COLORS.Class);
       setBlockDescription('');
-
-      const d = defaultDate || currentDate;
-      setBlockDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+      setBlockDate(formatDate(defaultDate || currentDate));
 
       if (defaultHour !== undefined) {
         setBlockStartTime(`${String(defaultHour).padStart(2, '0')}:00`);
@@ -60,13 +82,14 @@ export const CalendarShell = () => {
         setBlockStartTime('09:00');
         setBlockEndTime('10:00');
       }
-      setBlockRepeatWeeks(0);
+      setBlockRecurrence('none');
     }
     setIsBlockModalOpen(true);
   };
 
   const handleSaveBlockFromModal = () => {
     if (!blockTitle.trim()) return;
+    if (blockStartTime >= blockEndTime) return;
 
     if (editingBlockId) {
       handleUpdateBlock(editingBlockId, {
@@ -87,7 +110,7 @@ export const CalendarShell = () => {
         startTime: blockStartTime,
         endTime: blockEndTime,
         description: blockDescription
-      }, blockRepeatWeeks);
+      }, blockRecurrence);
     }
     setIsBlockModalOpen(false);
   };
@@ -96,7 +119,7 @@ export const CalendarShell = () => {
     if (deadline) {
       setEditingDeadline(deadline);
       setDeadlineTitle(deadline.title);
-      setDeadlineType(deadline.type);
+      setDeadlineType((deadline.type as BlockType) || 'Test');
       setDeadlineColor(deadline.color || PRESET_COLORS.Test);
       setDeadlineDate(deadline.date);
       setDeadlineDescription(deadline.description || '');
@@ -106,7 +129,7 @@ export const CalendarShell = () => {
       setDeadlineType('Test');
       setDeadlineDescription('');
       setDeadlineColor(PRESET_COLORS.Test);
-      setDeadlineDate(`${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`);
+      setDeadlineDate(formatDate(currentDate));
     }
     setIsDeadlineModalOpen(true);
   };
@@ -116,7 +139,7 @@ export const CalendarShell = () => {
     if (editingDeadline) {
       setDeadlines(prev => prev.map(dl => dl.id === editingDeadline.id ? { ...dl, title: deadlineTitle, type: deadlineType, color: deadlineColor, date: deadlineDate, description: deadlineDescription } : dl));
     } else {
-      setDeadlines(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), title: deadlineTitle, type: deadlineType, color: deadlineColor, date: deadlineDate, description: deadlineDescription }]);
+      setDeadlines(prev => [...prev, { id: Math.random().toString(36).substring(2, 11), title: deadlineTitle, type: deadlineType, color: deadlineColor, date: deadlineDate, description: deadlineDescription }]);
     }
     setIsDeadlineModalOpen(false);
   };
@@ -128,7 +151,6 @@ export const CalendarShell = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is typing in an input or textarea
       if (
         document.activeElement instanceof HTMLInputElement ||
         document.activeElement instanceof HTMLTextAreaElement ||
@@ -142,7 +164,7 @@ export const CalendarShell = () => {
           const nextDate = new Date(prev);
           if (currentView === 'month') {
             nextDate.setMonth(nextDate.getMonth() - 1);
-            nextDate.setDate(1); // Avoid day overflow
+            nextDate.setDate(1);
           } else if (currentView === 'week') {
             nextDate.setDate(nextDate.getDate() - 7);
           } else if (currentView === 'day') {
@@ -155,7 +177,7 @@ export const CalendarShell = () => {
           const nextDate = new Date(prev);
           if (currentView === 'month') {
             nextDate.setMonth(nextDate.getMonth() + 1);
-            nextDate.setDate(1); // Avoid day overflow
+            nextDate.setDate(1);
           } else if (currentView === 'week') {
             nextDate.setDate(nextDate.getDate() + 7);
           } else if (currentView === 'day') {
@@ -170,27 +192,19 @@ export const CalendarShell = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentView]);
 
-  const handleAddBlock = (block: Omit<TimeBlock, 'id'>, weeksToRepeat: number = 0) => {
-    const newBlocks: TimeBlock[] = [];
+  const handleAddBlock = (block: Omit<TimeBlock, 'id'>, recurrence: 'none' | 'monthly' | 'semester' | 'indefinite' = 'none') => {
+    const recurrenceMap = {
+      none: undefined,
+      monthly: { type: 'weekly' as const, endsAfter: 4 },
+      semester: { type: 'weekly' as const, endsAfter: 16 },
+      indefinite: { type: 'weekly' as const },
+    };
 
-    // Generate original block
-    const originalDate = new Date(block.date + 'T12:00:00'); // Use mid-day to avoid timezone offset issues
-    newBlocks.push({ ...block, id: Math.random().toString(36).substr(2, 9) });
-
-    // Generate repeat blocks
-    for (let i = 1; i <= weeksToRepeat; i++) {
-      const nextDate = new Date(originalDate);
-      nextDate.setDate(originalDate.getDate() + (i * 7));
-
-      const dateString = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
-      newBlocks.push({
-        ...block,
-        date: dateString,
-        id: Math.random().toString(36).substr(2, 9)
-      });
-    }
-
-    setTimeBlocks(prev => [...prev, ...newBlocks]);
+    setTimeBlocks(prev => [...prev, {
+      ...block,
+      id: Math.random().toString(36).substring(2, 11),
+      recurrence: recurrenceMap[recurrence],
+    }]);
   };
 
   const handleUpdateBlock = (id: string, updatedBlock: Partial<TimeBlock>) => {
@@ -263,12 +277,11 @@ export const CalendarShell = () => {
                     key={typeName}
                     className={`color-swatch-btn ${deadlineColor === hexColor && deadlineType === typeName ? 'selected' : ''}`}
                     style={{ backgroundColor: hexColor }}
-                    onClick={() => { setDeadlineType(typeName); setDeadlineColor(hexColor); }}
+                    onClick={() => { setDeadlineType(typeName as BlockType); setDeadlineColor(hexColor); }}
                     title={typeName}
                   />
                 ))}
 
-                {/* Custom Color Input disguised as a swatch */}
                 <div style={{ position: 'relative', width: '24px', height: '24px', borderRadius: '50%', overflow: 'hidden', border: deadlineType === 'Custom' ? '2px solid var(--text-1)' : '1px solid var(--border)' }}>
                   <input
                     type="color"
@@ -333,7 +346,6 @@ export const CalendarShell = () => {
                   />
                 ))}
 
-                {/* Custom Color Input disguised as a swatch */}
                 <div style={{ position: 'relative', width: '24px', height: '24px', borderRadius: '50%', overflow: 'hidden', border: blockType === 'Custom' ? '2px solid var(--text-1)' : '1px solid var(--border)' }}>
                   <input
                     type="color"
@@ -365,12 +377,11 @@ export const CalendarShell = () => {
             {!editingBlockId && (
               <div className="form-group">
                 <label className="form-label">Repeat Options</label>
-                <select className="form-select" value={blockRepeatWeeks} onChange={e => setBlockRepeatWeeks(Number(e.target.value))}>
-                  <option value={0}>Do not repeat</option>
-                  <option value={1}>Repeat weekly for 1 week</option>
-                  <option value={2}>Repeat weekly for 2 weeks</option>
-                  <option value={4}>Repeat weekly for 1 month</option>
-                  <option value={12}>Repeat weekly for 3 months</option>
+                <select className="form-select" value={blockRecurrence} onChange={e => setBlockRecurrence(e.target.value as 'none' | 'monthly' | 'semester' | 'indefinite')}>
+                  <option value="none">Does not repeat</option>
+                  <option value="monthly">Monthly (4 weeks)</option>
+                  <option value="semester">Full semester (16 weeks)</option>
+                  <option value="indefinite">Indefinitely</option>
                 </select>
               </div>
             )}
