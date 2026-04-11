@@ -54,7 +54,7 @@ export const OnboardingFlow = ({ onComplete }: { onComplete: (major: string) => 
     schedule_preferences: { preferred_study_time: 'Evening', off_days: [] },
   });
 
-  const generateId = () => Math.random().toString(36).substr(2, 9);
+  const generateId = () => Math.random().toString(36).substring(2, 11);
 
   const handleNext = () => setStep(s => Math.min(s + 1, 3));
   const handlePrev = () => setStep(s => Math.max(s - 1, 0));

@@ -217,12 +217,10 @@ export const DashboardShell = ({ major = 'Environmental Engineering' }: Props) =
             <PilotChat isStudyMode={studyMode} {...pilotChat} />
           </div>
 
-          {/* ── SCHEDULE (Calendar) ── */}
-          {tab === 'schedule' && (
-            <div className="anim-in" style={{ height: 'calc(100vh - 90px)', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-              <CalendarShell />
-            </div>
-          )}
+          {/* ── SCHEDULE (Calendar) — always mounted to preserve state ── */}
+          <div style={{ display: tab === 'schedule' ? 'flex' : 'none', height: 'calc(100vh - 90px)', minHeight: 0, flexDirection: 'column' }}>
+            <CalendarShell />
+          </div>
 
           {/* ── ANALYTICS ── */}
           {tab === 'analytics' && (

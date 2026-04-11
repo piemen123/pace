@@ -1,16 +1,9 @@
-import { useRef, useEffect } from 'react';
-import { Send, Sparkles, Zap, Clock, Brain, BookOpen, GraduationCap, Calendar, RotateCcw } from 'lucide-react';
+import { useEffect } from 'react';
+import { Send, Sparkles, Zap, RotateCcw } from 'lucide-react';
 import Markdown from 'react-markdown';
 import type { Msg } from './usePilotChat';
-
-const QUICK_PROMPTS = [
-  { icon: <Brain size={15} />,         label: 'I have an upcoming exam',   sub: 'Build a study plan'          },
-  { icon: <Clock size={15} />,         label: 'Help me plan my week',       sub: 'Optimise your schedule'      },
-  { icon: <BookOpen size={15} />,      label: 'Give me study tips',         sub: 'Evidence-based techniques'   },
-  { icon: <GraduationCap size={15} />, label: 'Review my workload',         sub: 'Credits & time analysis'     },
-  { icon: <Calendar size={15} />,      label: 'When is my next deadline?',  sub: 'Check your timeline'         },
-  { icon: <Zap size={15} />,           label: 'Start a focus session',      sub: 'Pomodoro + live guidance'    },
-];
+import { useChatInput } from './useChatInput';
+import { QUICK_PROMPTS } from './quickPrompts';
 
 interface Props {
   isStudyMode: boolean;
@@ -23,31 +16,15 @@ interface Props {
 }
 
 export const PilotChat = ({ isStudyMode, messages, input, setInput, loading, send, retry }: Props) => {
-  const bottomRef   = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { textareaRef, bottomRef, scrollToBottom, handleChange: _handleChange, handleKeyDown } = useChatInput(input, send);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollToBottom();
   }, [messages, loading]);
-
-  useEffect(() => {
-    if (!input && textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-    }
-  }, [input]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
-    const el = e.target;
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 160) + 'px';
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      send();
-    }
+    _handleChange(e);
   };
 
   const hasMessages = messages.some(m => m.role === 'user');
@@ -56,7 +33,6 @@ export const PilotChat = ({ isStudyMode, messages, input, setInput, loading, sen
     <div className="pchat-wrap">
       <div className="pchat-inner">
 
-        {/* ── Welcome / Empty state ── */}
         {!hasMessages && (
           <div className="pchat-welcome">
             <div className="pchat-welcome-avatar">
@@ -86,11 +62,10 @@ export const PilotChat = ({ isStudyMode, messages, input, setInput, loading, sen
           </div>
         )}
 
-        {/* ── Message thread ── */}
         {hasMessages && (
           <div className="pchat-messages">
             {messages.map((m, i) => (
-              <div key={i} className={`pchat-msg-row ${m.role}`}>
+              <div key={`${m.ts}-${i}`} className={`pchat-msg-row ${m.role}`}>
                 {m.role === 'bot' && (
                   <div className="pchat-bot-avatar">
                     <Sparkles size={13} />
@@ -98,9 +73,7 @@ export const PilotChat = ({ isStudyMode, messages, input, setInput, loading, sen
                 )}
                 <div className="pchat-msg-col">
                   <div className={`pchat-bubble ${m.role}`}>
-                    {m.role === 'bot'
-                      ? <Markdown>{m.text}</Markdown>
-                      : m.text}
+                    {m.role === 'bot' ? <Markdown>{m.text}</Markdown> : m.text}
                   </div>
                   {m.failed && m.retryText && (
                     <button className="pchat-retry-btn" onClick={() => retry(m.retryText!)}>
@@ -127,7 +100,6 @@ export const PilotChat = ({ isStudyMode, messages, input, setInput, loading, sen
           </div>
         )}
 
-        {/* ── Input bar ── */}
         <div className="pchat-input-bar">
           {isStudyMode && (
             <div className="pchat-study-banner">

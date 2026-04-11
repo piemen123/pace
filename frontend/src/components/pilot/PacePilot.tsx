@@ -1,13 +1,9 @@
-import { useRef, useEffect } from 'react';
-import { Send, Sparkles, Zap, Clock, Brain, BookOpen, X, RotateCcw } from 'lucide-react';
+import { useEffect } from 'react';
+import { Send, Sparkles, Zap, X, RotateCcw } from 'lucide-react';
 import Markdown from 'react-markdown';
 import type { Msg } from './usePilotChat';
-
-const QUICK_PROMPTS = [
-  { icon: <Brain size={13} />,    label: 'I have an upcoming exam' },
-  { icon: <Clock size={13} />,    label: 'Help me plan my week'    },
-  { icon: <BookOpen size={13} />, label: 'Give me study tips'      },
-];
+import { useChatInput } from './useChatInput';
+import { QUICK_PROMPTS } from './quickPrompts';
 
 interface Props {
   open: boolean;
@@ -22,32 +18,15 @@ interface Props {
 }
 
 export const PacePilot = ({ open, isStudyMode, messages, input, setInput, loading, send, retry, onClose }: Props) => {
-  const bottomRef   = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { textareaRef, bottomRef, scrollToBottom, handleChange: _handleChange, handleKeyDown } = useChatInput(input, send);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollToBottom();
   }, [messages, loading]);
-
-  // Reset textarea height after a message is sent
-  useEffect(() => {
-    if (!input && textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-    }
-  }, [input]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
-    const el = e.target;
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      send();
-    }
+    _handleChange(e);
   };
 
   const hasUserMsg = messages.some(m => m.role === 'user');
@@ -56,7 +35,6 @@ export const PacePilot = ({ open, isStudyMode, messages, input, setInput, loadin
     <div className={`pilot-panel-wrap${open ? '' : ' pilot-panel-wrap--closed'}`}>
     <aside className="pilot-panel">
 
-      {/* ── Header ── */}
       <div className="pilot-header">
         <div className="pilot-avatar-lg">
           <Sparkles size={16} />
@@ -78,7 +56,6 @@ export const PacePilot = ({ open, isStudyMode, messages, input, setInput, loadin
         </button>
       </div>
 
-      {/* ── Study mode strip ── */}
       {isStudyMode && (
         <div className="pilot-study-strip">
           <div className="pilot-study-strip-dot" />
@@ -86,10 +63,9 @@ export const PacePilot = ({ open, isStudyMode, messages, input, setInput, loadin
         </div>
       )}
 
-      {/* ── Messages ── */}
       <div className="pilot-messages">
         {messages.map((m, i) => (
-          <div key={i} className={`pilot-msg-row ${m.role}`}>
+          <div key={`${m.ts}-${i}`} className={`pilot-msg-row ${m.role}`}>
             {m.role === 'bot' && (
               <div className="pilot-msg-avatar">
                 <Sparkles size={10} />
@@ -97,9 +73,7 @@ export const PacePilot = ({ open, isStudyMode, messages, input, setInput, loadin
             )}
             <div className="pilot-msg-col">
               <div className={`pilot-msg ${m.role}`}>
-                {m.role === 'bot'
-                  ? <Markdown>{m.text}</Markdown>
-                  : m.text}
+                {m.role === 'bot' ? <Markdown>{m.text}</Markdown> : m.text}
               </div>
               {m.failed && m.retryText && (
                 <button className="pilot-retry-btn" onClick={() => retry(m.retryText!)}>
@@ -125,10 +99,9 @@ export const PacePilot = ({ open, isStudyMode, messages, input, setInput, loadin
         <div ref={bottomRef} />
       </div>
 
-      {/* ── Quick prompts ── */}
       {!hasUserMsg && (
         <div className="pilot-chips">
-          {QUICK_PROMPTS.map(p => (
+          {QUICK_PROMPTS.slice(0, 3).map(p => (
             <button
               key={p.label}
               className="pilot-chip"
@@ -142,7 +115,6 @@ export const PacePilot = ({ open, isStudyMode, messages, input, setInput, loadin
         </div>
       )}
 
-      {/* ── Input ── */}
       <div className="pilot-input-wrap">
         <div className="pilot-input-row">
           <textarea

@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { UploadCloud, CheckCircle, FileText } from 'lucide-react';
-import { extractSyllabus } from '../../services/api';
+import { extractSyllabus, type SyllabusData } from '../../services/api';
 
 export const UploadPipeline = () => {
   const [file, setFile] = useState<File | null>(null);
   const [hovering, setHovering] = useState(false);
   const [status, setStatus] = useState<'idle' | 'uploading' | 'success'>('idle');
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<SyllabusData | null>(null);
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
